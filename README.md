@@ -307,9 +307,9 @@ npx prisma db seed
 
 | Role | Email | Password |
 |---|---|---|
-| ADMIN | admin@codechef.com | Password123! |
-| ORGANIZER | organizer@codechef.com | Password123! |
-| PARTICIPANT | participant@codechef.com | Password123! |
+| ADMIN | admin@codechef.local | Password123! |
+| ORGANIZER | organizer@codechef.local | Password123! |
+| PARTICIPANT | participant@codechef.local | Password123! |
 
 ---
 

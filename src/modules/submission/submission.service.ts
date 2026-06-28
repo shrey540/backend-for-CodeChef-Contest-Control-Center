@@ -13,6 +13,8 @@ import {
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ContestService } from '../contest/contest.service';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../../common/enums/activity-action.enum';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SubmissionListQueryDto } from './dto/submission-list-query.dto';
 import { SubmissionResponseDto } from './dto/submission-response.dto';
@@ -22,6 +24,7 @@ export class SubmissionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly contestService: ContestService,
+    private readonly activityService: ActivityService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -68,6 +71,14 @@ export class SubmissionService {
         verdict: SubmissionVerdict.PENDING,
         judgedAt: null,
       },
+    });
+
+    void this.activityService.log({
+      action: ActivityAction.SUBMISSION_CREATED,
+      contestId,
+      actorId: user.id,
+      entityType: 'submission',
+      entityId: submission.id,
     });
 
     return this.toResponse(submission);

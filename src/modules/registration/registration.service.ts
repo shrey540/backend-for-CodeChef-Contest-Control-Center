@@ -8,6 +8,8 @@ import { ContestStatus, Prisma, UserRole } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ContestService } from '../contest/contest.service';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../../common/enums/activity-action.enum';
 import { RegistrationResponseDto } from './dto/registration-response.dto';
 
 /** Contest statuses that accept new registrations. */
@@ -21,6 +23,7 @@ export class RegistrationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly contestService: ContestService,
+    private readonly activityService: ActivityService,
   ) {}
 
   /**
@@ -46,6 +49,13 @@ export class RegistrationService {
           contestId,
           userId: user.id,
         },
+      });
+      void this.activityService.log({
+        action: ActivityAction.PARTICIPANT_REGISTERED,
+        contestId,
+        actorId: user.id,
+        entityType: 'registration',
+        entityId: registration.id,
       });
       return this.toResponse(registration);
     } catch (err) {

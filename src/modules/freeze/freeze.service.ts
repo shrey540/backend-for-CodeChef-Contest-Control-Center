@@ -6,6 +6,8 @@ import { ContestStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ContestService } from '../contest/contest.service';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../../common/enums/activity-action.enum';
 
 export interface FreezeStatusDto {
   contestId: string;
@@ -18,6 +20,7 @@ export class FreezeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly contestService: ContestService,
+    private readonly activityService: ActivityService,
   ) {}
 
   /**
@@ -47,6 +50,14 @@ export class FreezeService {
       },
     });
 
+    void this.activityService.log({
+      action: ActivityAction.FREEZE_ENABLED,
+      contestId: updated.id,
+      actorId: user.id,
+      entityType: 'contest',
+      entityId: updated.id,
+    });
+
     return {
       contestId: updated.id,
       freezeEnabled: updated.freezeEnabled,
@@ -69,6 +80,14 @@ export class FreezeService {
     const updated = await this.prisma.contest.update({
       where: { id: contestId },
       data: { freezeEnabled: false },
+    });
+
+    void this.activityService.log({
+      action: ActivityAction.FREEZE_DISABLED,
+      contestId: updated.id,
+      actorId: user.id,
+      entityType: 'contest',
+      entityId: updated.id,
     });
 
     return {

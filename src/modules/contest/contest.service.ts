@@ -10,10 +10,15 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PARTICIPANT_VISIBLE_STATUSES } from './constants/contest.constants';
 import { CreateContestDto, ContestResponseDto, UpdateContestDto } from './dto';
 import { validateContestSchedule } from './utils/contest-schedule.validator';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../../common/enums/activity-action.enum';
 
 @Injectable()
 export class ContestService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityService: ActivityService,
+  ) {}
 
   async create(
     user: AuthenticatedUser,
@@ -36,6 +41,14 @@ export class ContestService {
         freezeEnabled: dto.freezeEnabled ?? false,
         freezeAt,
       },
+    });
+
+    void this.activityService.log({
+      action: ActivityAction.CONTEST_CREATED,
+      contestId: contest.id,
+      actorId: user.id,
+      entityType: 'contest',
+      entityId: contest.id,
     });
 
     return this.toResponse(contest);
@@ -93,6 +106,14 @@ export class ContestService {
       },
     });
 
+    void this.activityService.log({
+      action: ActivityAction.CONTEST_UPDATED,
+      contestId: updated.id,
+      actorId: user.id,
+      entityType: 'contest',
+      entityId: updated.id,
+    });
+
     return this.toResponse(updated);
   }
 
@@ -130,6 +151,14 @@ export class ContestService {
       },
     });
 
+    void this.activityService.log({
+      action: ActivityAction.CONTEST_STARTED,
+      contestId: updated.id,
+      actorId: user.id,
+      entityType: 'contest',
+      entityId: updated.id,
+    });
+
     return this.toResponse(updated);
   }
 
@@ -144,6 +173,14 @@ export class ContestService {
         status: ContestStatus.ENDED,
         endedAt: new Date(),
       },
+    });
+
+    void this.activityService.log({
+      action: ActivityAction.CONTEST_ENDED,
+      contestId: updated.id,
+      actorId: user.id,
+      entityType: 'contest',
+      entityId: updated.id,
     });
 
     return this.toResponse(updated);

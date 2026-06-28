@@ -8,6 +8,8 @@ import { ContestStatus, Prisma, Problem, UserRole } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ContestService } from '../contest/contest.service';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../../common/enums/activity-action.enum';
 import { CreateProblemDto } from './dto/create-problem.dto';
 import { ProblemResponseDto } from './dto/problem-response.dto';
 import { UpdateProblemDto } from './dto/update-problem.dto';
@@ -17,6 +19,7 @@ export class ProblemService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly contestService: ContestService,
+    private readonly activityService: ActivityService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -44,6 +47,13 @@ export class ProblemService {
           timeLimitMs: dto.timeLimitMs ?? 2000,
           memoryLimitMb: dto.memoryLimitMb ?? 256,
         },
+      });
+      void this.activityService.log({
+        action: ActivityAction.PROBLEM_CREATED,
+        contestId,
+        actorId: user.id,
+        entityType: 'problem',
+        entityId: problem.id,
       });
       return this.toResponse(problem);
     } catch (err) {
@@ -76,6 +86,13 @@ export class ProblemService {
           ...(dto.memoryLimitMb !== undefined && { memoryLimitMb: dto.memoryLimitMb }),
         },
       });
+      void this.activityService.log({
+        action: ActivityAction.PROBLEM_UPDATED,
+        contestId,
+        actorId: user.id,
+        entityType: 'problem',
+        entityId: updated.id,
+      });
       return this.toResponse(updated);
     } catch (err) {
       this.handlePrismaError(err, dto.code, dto.title);
@@ -95,6 +112,13 @@ export class ProblemService {
 
     try {
       await this.prisma.problem.delete({ where: { id } });
+      void this.activityService.log({
+        action: ActivityAction.PROBLEM_DELETED,
+        contestId,
+        actorId: user.id,
+        entityType: 'problem',
+        entityId: id,
+      });
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&

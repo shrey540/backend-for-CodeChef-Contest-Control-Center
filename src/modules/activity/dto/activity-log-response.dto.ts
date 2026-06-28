@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ActivityAction } from '../../../common/enums/activity-action.enum';
+import { ActivityAction } from '@prisma/client';
 
 export class ActivityLogResponseDto {
   @ApiProperty()
@@ -8,20 +8,20 @@ export class ActivityLogResponseDto {
   @ApiProperty({ enum: ActivityAction })
   action: ActivityAction;
 
-  @ApiPropertyOptional()
-  contestId?: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  contestId: string | null;
 
-  @ApiPropertyOptional()
-  actorId?: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  actorId: string | null;
 
-  @ApiPropertyOptional()
-  entityType?: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  entityType: string | null;
 
-  @ApiPropertyOptional()
-  entityId?: string | null;
+  @ApiPropertyOptional({ nullable: true })
+  entityId: string | null;
 
-  @ApiPropertyOptional()
-  metadata?: Record<string, unknown> | null;
+  @ApiPropertyOptional({ nullable: true })
+  metadata: Record<string, unknown> | null;
 
   @ApiProperty()
   createdAt: Date;

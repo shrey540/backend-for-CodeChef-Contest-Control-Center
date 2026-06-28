@@ -21,6 +21,7 @@ import {
   ApiOperation,
   ApiConflictResponse,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -35,6 +36,7 @@ import { ProblemResponseDto } from './dto/problem-response.dto';
 
 @ApiTags('Problems')
 @ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing or invalid JWT.' })
 @UseGuards(JwtAuthGuard)
 @Controller('contests/:contestId/problems')
 export class ProblemController {

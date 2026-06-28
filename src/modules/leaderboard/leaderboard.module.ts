@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../../auth/auth.module';
 import { ContestModule } from '../contest/contest.module';
 import { LeaderboardController } from './leaderboard.controller';
 import { LeaderboardService } from './leaderboard.service';
 
 @Module({
-  imports: [ContestModule],
+  imports: [AuthModule, ContestModule],
   controllers: [LeaderboardController],
   providers: [LeaderboardService],
   exports: [LeaderboardService],

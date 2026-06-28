@@ -1,9 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ProgrammingLanguage } from '../../../common/enums/programming-language.enum';
-import { SubmissionVerdict } from '../../../common/enums/submission-verdict.enum';
+import { ProgrammingLanguage, SubmissionVerdict } from '@prisma/client';
 
 export class SubmissionResponseDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
   id: string;
 
   @ApiProperty()
@@ -27,6 +26,6 @@ export class SubmissionResponseDto {
   @ApiProperty()
   submittedAt: Date;
 
-  @ApiPropertyOptional()
-  judgedAt?: Date | null;
+  @ApiPropertyOptional({ nullable: true })
+  judgedAt: Date | null;
 }

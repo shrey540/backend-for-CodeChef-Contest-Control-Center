@@ -40,6 +40,7 @@ import {
 
 @ApiTags('Contests')
 @ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Missing or invalid JWT.' })
 @Controller('contests')
 @UseGuards(JwtAuthGuard)
 export class ContestController {
@@ -124,6 +125,7 @@ export class ContestController {
   }
 
   @Post(':id/start')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.ORGANIZER)
   @ApiOperation({ summary: 'Start contest' })
@@ -139,6 +141,7 @@ export class ContestController {
   }
 
   @Post(':id/end')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.ORGANIZER)
   @ApiOperation({ summary: 'End contest' })

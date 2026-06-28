@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { SubmissionVerdict } from '../../../common/enums/submission-verdict.enum';
+import { SubmissionVerdict } from '@prisma/client';
 
 export class RejudgeHistoryResponseDto {
   @ApiProperty()

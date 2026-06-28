@@ -1,0 +1,212 @@
+// CodeChef Contest Control Center — Prisma Schema
+// PostgreSQL | UUID PKs | snake_case columns | camelCase Prisma fields
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  ORGANIZER
+  PARTICIPANT
+}
+
+enum ContestStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  ENDED
+}
+
+enum ProblemDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ProgrammingLanguage {
+  CPP
+  JAVA
+  PYTHON
+  JAVASCRIPT
+}
+
+enum SubmissionVerdict {
+  PENDING
+  RUNNING
+  ACCEPTED
+  WRONG_ANSWER
+  RUNTIME_ERROR
+  TIME_LIMIT_EXCEEDED
+}
+
+enum ActivityAction {
+  CONTEST_CREATED
+  CONTEST_UPDATED
+  CONTEST_STARTED
+  CONTEST_ENDED
+  FREEZE_ENABLED
+  FREEZE_DISABLED
+  PROBLEM_CREATED
+  PROBLEM_UPDATED
+  PROBLEM_DELETED
+  PARTICIPANT_REGISTERED
+  SUBMISSION_CREATED
+  SUBMISSION_JUDGED
+  SUBMISSION_REJUDGED
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+/// Authentication identity and RBAC role (seeded internally, not API-managed).
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(100)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         UserRole @default(PARTICIPANT)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organizedContests Contest[]        @relation("ContestOrganizer")
+  registrations     Registration[]
+  submissions       Submission[]
+  rejudgeHistory    RejudgeHistory[] @relation("RejudgedBy")
+  activityLogs      ActivityLog[]    @relation("ActivityActor")
+
+  @@map("users")
+}
+
+/// Contest aggregate: lifecycle, schedule, freeze mode. Uses `name` (not title).
+model Contest {
+  id            String        @id @default(uuid()) @db.Uuid
+  organizerId   String        @map("organizer_id") @db.Uuid
+  name          String        @db.VarChar(200)
+  description   String?       @db.Text
+  status        ContestStatus @default(DRAFT)
+  startTime     DateTime      @map("start_time") @db.Timestamptz(6)
+  endTime       DateTime      @map("end_time") @db.Timestamptz(6)
+  freezeEnabled Boolean       @default(false) @map("freeze_enabled")
+  freezeAt      DateTime?     @map("freeze_at") @db.Timestamptz(6)
+  startedAt     DateTime?     @map("started_at") @db.Timestamptz(6)
+  endedAt       DateTime?     @map("ended_at") @db.Timestamptz(6)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organizer     User           @relation("ContestOrganizer", fields: [organizerId], references: [id], onDelete: Restrict)
+  problems      Problem[]
+  registrations Registration[]
+  submissions   Submission[]
+  activityLogs  ActivityLog[]
+
+  @@index([organizerId], map: "contests_organizer_id_idx")
+  @@index([status], map: "contests_status_idx")
+  @@map("contests")
+}
+
+/// Problem scoped to a contest. Code and title are unique per contest.
+model Problem {
+  id            String            @id @default(uuid()) @db.Uuid
+  contestId     String            @map("contest_id") @db.Uuid
+  code          String           @db.VarChar(10)
+  title         String            @db.VarChar(200)
+  /// Problem body / statement. Stored in column "description" for backward compat.
+  statement     String            @map("description") @db.Text
+  difficulty    ProblemDifficulty
+  points        Int
+  timeLimitMs   Int               @map("time_limit_ms")
+  memoryLimitMb Int               @map("memory_limit_mb")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contest     Contest      @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@unique([contestId, title], map: "problems_contest_id_title_key")
+  @@unique([contestId, code], map: "problems_contest_id_code_key")
+  @@index([contestId], map: "problems_contest_id_idx")
+  @@map("problems")
+}
+
+/// Participant enrollment. One seat per (contest, user).
+model Registration {
+  id           String   @id @default(uuid()) @db.Uuid
+  contestId    String   @map("contest_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  registeredAt DateTime @default(now()) @map("registered_at") @db.Timestamptz(6)
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId], map: "registrations_contest_id_user_id_key")
+  @@index([contestId], map: "registrations_contest_id_idx")
+  @@index([userId], map: "registrations_user_id_idx")
+  @@map("registrations")
+}
+
+/// Submission with language, code, server-generated verdict and timestamps.
+model Submission {
+  id          String              @id @default(uuid()) @db.Uuid
+  contestId   String              @map("contest_id") @db.Uuid
+  problemId   String              @map("problem_id") @db.Uuid
+  userId      String              @map("user_id") @db.Uuid
+  language    ProgrammingLanguage
+  code        String              @db.Text
+  verdict     SubmissionVerdict   @default(PENDING)
+  submittedAt DateTime            @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  judgedAt    DateTime?           @map("judged_at") @db.Timestamptz(6)
+
+  contest        Contest          @relation(fields: [contestId], references: [id], onDelete: Restrict)
+  problem        Problem          @relation(fields: [problemId], references: [id], onDelete: Restrict)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  rejudgeHistory RejudgeHistory[]
+
+  @@index([contestId, userId], map: "submissions_contest_id_user_id_idx")
+  @@index([contestId, problemId], map: "submissions_contest_id_problem_id_idx")
+  @@index([contestId, submittedAt], map: "submissions_contest_id_submitted_at_idx")
+  @@index([contestId, verdict], map: "submissions_contest_id_verdict_idx")
+  @@index([userId], map: "submissions_user_id_idx")
+  @@map("submissions")
+}
+
+/// Append-only rejudge audit trail. Never update or delete rows via API.
+model RejudgeHistory {
+  id           String            @id @default(uuid()) @db.Uuid
+  submissionId String            @map("submission_id") @db.Uuid
+  rejudgedById String            @map("rejudged_by_id") @db.Uuid
+  oldVerdict   SubmissionVerdict @map("old_verdict")
+  newVerdict   SubmissionVerdict @map("new_verdict")
+  rejudgedAt   DateTime          @default(now()) @map("rejudged_at") @db.Timestamptz(6)
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  rejudgedBy User       @relation("RejudgedBy", fields: [rejudgedById], references: [id], onDelete: Restrict)
+
+  @@index([submissionId], map: "rejudge_history_submission_id_idx")
+  @@map("rejudge_history")
+}
+
+/// Append-only domain audit log.
+model ActivityLog {
+  id         String         @id @default(uuid()) @db.Uuid
+  action     ActivityAction
+  contestId  String?        @map("contest_id") @db.Uuid
+  actorId    String?        @map("actor_id") @db.Uuid
+  entityType String?        @map("entity_type") @db.VarChar(50)
+  entityId   String?        @map("entity_id") @db.Uuid
+  metadata   Json?          @db.JsonB
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contest Contest? @relation(fields: [contestId], references: [id], onDelete: SetNull)
+  actor   User?    @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([contestId, createdAt(sort: Desc)], map: "activity_logs_contest_id_created_at_idx")
+  @@index([actorId], map: "activity_logs_actor_id_idx")
+  @@map("activity_logs")
+}

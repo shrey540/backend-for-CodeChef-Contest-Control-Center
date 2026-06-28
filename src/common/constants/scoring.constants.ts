@@ -1,0 +1,1 @@
+export const PENALTY_PER_WRONG_ATTEMPT_MINUTES = 20;
